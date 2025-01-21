@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("SUPABASE_DATABASE_URL")
+  directUrl = env("SUPABASE_DIRECT_URL")
+}
+
+model User {
+  id             Int      @id @default(autoincrement())
+  email          String   @unique
+  password       String
+  name           String
+  role           Role
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdFarmers Farmer[] @relation("CreatedByUser")
+  updatedFarmers Farmer[] @relation("UpdatedByUser")
+
+  @@map("users")
+}
+
+model Farmer {
+  id            Int              @id @default(autoincrement())
+  surveyNumber  String           @unique
+  name          String
+  relationship  Relationship
+  gender        Gender
+  community     String
+  aadharNumber  String           @unique
+  state         String
+  district      String
+  mandal        String
+  village       String
+  panchayath    String
+  dateOfBirth   DateTime
+  age           Int
+  contactNumber String
+  createdById   Int
+  updatedById   Int
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  bankDetails   BankDetails?
+  documents     FarmerDocuments?
+  createdBy     User             @relation("CreatedByUser", fields: [createdById], references: [id])
+  updatedBy     User             @relation("UpdatedByUser", fields: [updatedById], references: [id])
+  fields        Field[]
+
+  @@map("farmers")
+}
+
+model FarmerDocuments {
+  id            Int      @id @default(autoincrement())
+  profilePicUrl String
+  aadharDocUrl  String
+  bankDocUrl    String
+  farmerId      Int      @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  farmer        Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@map("farmer_documents")
+}
+
+model BankDetails {
+  id            Int      @id @default(autoincrement())
+  ifscCode      String
+  bankName      String
+  branchName    String
+  accountNumber String
+  address       String
+  bankCode      String
+  farmerId      Int      @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  farmer        Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@map("bank_details")
+}
+
+model Field {
+  id              Int      @id @default(autoincrement())
+  areaHa          Float
+  yieldEstimate   Float
+  location        Json
+  landDocumentUrl String
+  farmerId        Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  farmer          Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@map("fields")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum Relationship {
+  SELF
+  SPOUSE
+  CHILD
+  OTHER
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
