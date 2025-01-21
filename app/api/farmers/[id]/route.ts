@@ -20,6 +20,7 @@ interface FarmerWithSignedUrls extends Farmer {
 export async function GET(request: Request, { params }: { params: { identifier: string } }) {
 	try {
 		console.log('Fetching single farmer. Identifier:', params.identifier);
+
 		const farmer = await prisma.farmer.findFirst({
 			where: {
 				OR: [{ surveyNumber: params.identifier }, { id: parseInt(params.identifier) || 0 }],
@@ -73,64 +74,105 @@ export async function GET(request: Request, { params }: { params: { identifier: 
 		return NextResponse.json({ error: 'Failed to fetch farmer details' }, { status: 500 });
 	}
 }
-export async function PUT(request: Request, { params }: { params: { identifier: string } }) {
+
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
 	try {
 		const userRole = request.headers.get('x-user-role');
 		const userId = request.headers.get('x-user-id');
+		const { id } = params;
+
+		if (!id) {
+			return NextResponse.json({ error: 'Invalid identifier provided' }, { status: 400 });
+		}
+
 		if (userRole !== 'ADMIN') {
 			return NextResponse.json({ error: 'Only admins can edit farmer records' }, { status: 403 });
 		}
+
 		const existingFarmer = await prisma.farmer.findFirst({
 			where: {
-				OR: [{ surveyNumber: params.identifier }, { id: parseInt(params.identifier) || 0 }],
+				OR: [{ surveyNumber: id }, { id: parseInt(id) || 0 }],
 			},
 			include: {
 				documents: true,
 				fields: true,
 			},
 		});
+
 		if (!existingFarmer) {
 			return NextResponse.json({ error: 'Farmer not found' }, { status: 404 });
 		}
+
+		const contentType = request.headers.get('content-type') || '';
+		if (!contentType.includes('multipart/form-data')) {
+			return NextResponse.json({ error: 'Content-Type must be multipart/form-data' }, { status: 400 });
+		}
+
 		const formData = await request.formData();
+
 		async function updateFile(newFile: File | null, currentPath: string | null, folder: string): Promise<string> {
 			if (!newFile) return currentPath || '';
-			await FileSchema.parseAsync(newFile);
-			if (currentPath) {
-				await supabase.storage.from('farmer-data').remove([`${folder}/${currentPath}`]);
+
+			try {
+				await FileSchema.parseAsync(newFile);
+
+				if (currentPath) {
+					const { error: deleteError } = await supabase.storage.from('farmer-data').remove([`${folder}/${currentPath}`]);
+
+					if (deleteError) {
+						console.error(`Error deleting old file: ${deleteError.message}`);
+					}
+				}
+
+				const fileExt = newFile.name.split('.').pop() || '';
+				const fileName = `${existingFarmer!.surveyNumber}_${Date.now()}.${fileExt}`;
+
+				const { error: uploadError } = await supabase.storage.from('farmer-data').upload(`${folder}/${fileName}`, newFile);
+
+				if (uploadError) {
+					throw new Error(`Failed to upload ${folder} document: ${uploadError.message}`);
+				}
+
+				return fileName;
+			} catch (error) {
+				console.error(`File handling error for ${folder}:`, error);
+				throw error;
 			}
-			const fileExt = newFile.name.split('.').pop() || '';
-			const fileName = `${existingFarmer!.surveyNumber}_${Date.now()}.${fileExt}`;
-			const { error } = await supabase.storage.from('farmer-data').upload(`${folder}/${fileName}`, newFile);
-			if (error) throw new Error(`Failed to upload ${folder} document`);
-			return fileName;
 		}
+
 		const [profilePicName, aadharDocName, bankDocName] = await Promise.all([
 			updateFile(formData.get('profilePic') as File | null, existingFarmer.documents?.profilePicUrl || null, 'profile-pic'),
 			updateFile(formData.get('aadharDoc') as File | null, existingFarmer.documents?.aadharDocUrl || null, 'aadhar-doc'),
 			updateFile(formData.get('bankDoc') as File | null, existingFarmer.documents?.bankDocUrl || null, 'bank-doc'),
 		]);
+
 		type FieldCreate = Omit<Prisma.FieldCreateWithoutFarmerInput, 'id' | 'createdAt' | 'updatedAt'>;
 		let fieldsToUpdate: FieldCreate[] = [];
+
 		if (formData.get('fields')) {
-			const parsedFields = JSON.parse(formData.get('fields') as string);
-			fieldsToUpdate = await Promise.all(
-				parsedFields.map(async (field: FieldCreate, index: number) => {
-					const fieldDoc = formData.get(`fieldDoc_${index}`) as File | null;
-					const landDocName = await updateFile(fieldDoc, field.landDocumentUrl, 'land-doc');
-					return {
-						areaHa: field.areaHa,
-						yieldEstimate: field.yieldEstimate,
-						location: field.location,
-						landDocumentUrl: landDocName,
-					};
-				})
-			);
+			try {
+				const parsedFields = JSON.parse(formData.get('fields') as string);
+				fieldsToUpdate = await Promise.all(
+					parsedFields.map(async (field: FieldCreate, index: number) => {
+						const fieldDoc = formData.get(`fieldDoc_${index}`) as File | null;
+						const landDocName = await updateFile(fieldDoc, field.landDocumentUrl, 'land-doc');
+
+						return {
+							areaHa: field.areaHa,
+							yieldEstimate: field.yieldEstimate,
+							location: field.location,
+							landDocumentUrl: landDocName,
+						};
+					})
+				);
+			} catch (error) {
+				console.error('Fields parsing error:', error);
+				return NextResponse.json({ error: 'Invalid fields data format' }, { status: 400 });
+			}
 		}
+
 		const updatedFarmer = await prisma.farmer.update({
-			where: {
-				id: existingFarmer.id,
-			},
+			where: { id: existingFarmer.id },
 			data: {
 				...(formData.get('farmerName') && {
 					name: formData.get('farmerName') as string,
@@ -171,6 +213,7 @@ export async function PUT(request: Request, { params }: { params: { identifier: 
 				...(formData.get('contactNumber') && {
 					contactNumber: formData.get('contactNumber') as string,
 				}),
+
 				documents: {
 					update: {
 						profilePicUrl: profilePicName,
@@ -178,6 +221,7 @@ export async function PUT(request: Request, { params }: { params: { identifier: 
 						bankDocUrl: bankDocName,
 					},
 				},
+
 				...(formData.get('bankDetails') && {
 					bankDetails: {
 						update: {
@@ -190,6 +234,7 @@ export async function PUT(request: Request, { params }: { params: { identifier: 
 						},
 					},
 				}),
+
 				fields:
 					fieldsToUpdate.length > 0
 						? {
@@ -197,15 +242,18 @@ export async function PUT(request: Request, { params }: { params: { identifier: 
 								create: fieldsToUpdate,
 						  }
 						: undefined,
+
 				updatedById: parseInt(userId!),
 			},
 		});
+
 		return NextResponse.json({
 			message: 'Farmer updated successfully',
 			farmer: updatedFarmer,
 		});
 	} catch (error) {
 		console.error('Update farmer error:', error);
+
 		if (error instanceof z.ZodError) {
 			return NextResponse.json(
 				{
@@ -215,42 +263,74 @@ export async function PUT(request: Request, { params }: { params: { identifier: 
 				{ status: 400 }
 			);
 		}
+
 		return NextResponse.json({ error: 'Failed to update farmer details' }, { status: 500 });
 	}
 }
-export async function DELETE(request: Request, { params }: { params: { identifier: string } }) {
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
 	try {
 		const userRole = request.headers.get('x-user-role');
+		const { id } = params;
+
+		if (!id) {
+			return NextResponse.json({ error: 'Invalid identifier provided' }, { status: 400 });
+		}
+
 		if (userRole !== 'ADMIN') {
 			return NextResponse.json({ error: 'Only admins can delete farmer records' }, { status: 403 });
 		}
+
+		// Find farmer with their documents
 		const farmer = await prisma.farmer.findFirst({
 			where: {
-				OR: [{ surveyNumber: params.identifier }, { id: parseInt(params.identifier) || 0 }],
+				OR: [{ surveyNumber: id }, { id: parseInt(id) || 0 }],
 			},
 			include: {
 				documents: true,
 				fields: true,
 			},
 		});
+
 		if (!farmer) {
 			return NextResponse.json({ error: 'Farmer not found' }, { status: 404 });
 		}
+
 		const filesToDelete = [
-			`profile-pic/${farmer.documents?.profilePicUrl}`,
-			`aadhar-doc/${farmer.documents?.aadharDocUrl}`,
-			`bank-doc/${farmer.documents?.bankDocUrl}`,
-			...farmer.fields.map((field) => `land-doc/${field.landDocumentUrl}`),
-		].filter(Boolean);
-		await supabase.storage.from('farmer-data').remove(filesToDelete);
+			farmer.documents?.profilePicUrl && `profile-pic/${farmer.documents.profilePicUrl}`,
+			farmer.documents?.aadharDocUrl && `aadhar-doc/${farmer.documents.aadharDocUrl}`,
+			farmer.documents?.bankDocUrl && `bank-doc/${farmer.documents.bankDocUrl}`,
+			...farmer.fields.map((field) => field.landDocumentUrl && `land-doc/${field.landDocumentUrl}`),
+		].filter((filePath): filePath is string => !!filePath);
+
+		if (filesToDelete.length > 0) {
+			const { error: storageError } = await supabase.storage.from('farmer-data').remove(filesToDelete);
+
+			if (storageError) {
+				console.error('Storage deletion error:', storageError);
+			}
+		}
+
 		await prisma.farmer.delete({
 			where: { id: farmer.id },
 		});
+
 		return NextResponse.json({
-			message: 'Farmer deleted successfully',
+			message: 'Farmer and associated data deleted successfully',
 		});
 	} catch (error) {
 		console.error('Delete farmer error:', error);
+
+		if (error instanceof Error) {
+			return NextResponse.json(
+				{
+					error: 'Failed to delete farmer record',
+					detail: error.message,
+				},
+				{ status: 500 }
+			);
+		}
+
 		return NextResponse.json({ error: 'Failed to delete farmer record' }, { status: 500 });
 	}
 }

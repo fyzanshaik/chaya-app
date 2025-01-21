@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Gender, Relationship } from '@prisma/client';
+
 const BankDetailsSchema = z.object({
 	ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC code format'),
 	accountNumber: z.string().min(8, 'Account number too short'),

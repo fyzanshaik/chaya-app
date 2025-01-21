@@ -24,7 +24,9 @@ export async function POST(request: Request) {
 			role: user.role,
 			exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
 		};
-		(await cookies()).set('session', JSON.stringify(sessionToken), {
+
+		const cookieStore = await cookies();
+		cookieStore.set('session', JSON.stringify(sessionToken), {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'strict',
