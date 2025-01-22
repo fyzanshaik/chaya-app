@@ -11,11 +11,11 @@ echo "Cookie received: $COOKIE"
 # Create farmer with the stored cookie
 curl -X POST http://localhost:3000/api/farmers \
   -H "Cookie: $COOKIE" \
-  -F "farmerName=John Smith" \
+  -F "farmerName=Aniketh" \
   -F "relationship=SELF" \
   -F "gender=MALE" \
   -F "community=General" \
-  -F "aadharNumber=123456789111" \
+  -F "aadharNumber=123456789551" \
   -F "contactNumber=9876543210" \
   -F "state=Karnataka" \
   -F "district=Bangalore Rural" \
