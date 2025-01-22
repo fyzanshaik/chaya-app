@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const ADMIN_ROUTES = ['/api/users'];
+const ADMIN_ROUTES = ['/api/users', '/api/farmers', '/api/documents', '/api/export/farmers'];
 const PROTECTED_ROUTES = ['/api/farmers', '/api/test'];
 
 export async function middleware(request: NextRequest) {
@@ -45,5 +45,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-	matcher: ['/api/users/:path*', '/api/farmers/:path*', '/api/test'],
+	matcher: ['/api/users/:path*', '/api/farmers/:path*', '/api/test', '/api/documents/:path*', '/api/export/farmers/:path*'],
 };

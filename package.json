@@ -17,6 +17,7 @@
 		"@types/pdfkit": "^0.13.8",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
+		"csv-stringify": "^6.5.2",
 		"lucide-react": "^0.473.0",
 		"next": "15.1.5",
 		"pdfkit": "^0.16.0",
@@ -28,6 +29,7 @@
 	},
 	"devDependencies": {
 		"@eslint/eslintrc": "^3",
+		"@types/csv-stringify": "^1.4.3",
 		"@types/node": "^20.17.14",
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
