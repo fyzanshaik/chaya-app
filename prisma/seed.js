@@ -31,6 +31,12 @@ async function main() {
 			name: 'Mike Admin',
 			role: Role.ADMIN,
 		},
+		{
+			email: 'aniketh@admin.com',
+			password: hashPassword('aniketh123'),
+			name: 'Mike Admin',
+			role: Role.ADMIN,
+		},
 	];
 
 	for (const admin of adminUsers) {
@@ -41,7 +47,7 @@ async function main() {
 		});
 	}
 
-	console.log('Seed completed: 3 admin users created');
+	console.log('Seed completed:', adminUsers.length, 'admin users created');
 }
 
 main()
