@@ -1,6 +1,3 @@
-// import { PrismaClient, Role } from '@prisma/client';
-// import { createHash } from 'crypto';
-
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PrismaClient, Role } = require('@prisma/client');
 // eslint-disable-next-line @typescript-eslint/no-require-imports

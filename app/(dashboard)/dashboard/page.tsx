@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import AppSidebar from "../components/AppSidebar";
 import DetailsTable from "../components/DetailsTable";
 import {
@@ -28,14 +30,31 @@ import {
 } from "@/components/ui/sidebar";
 import { FarmerForm } from "../components/FarmerForm";
 import { useAuthStore } from "@/lib/utils/authStore";
-import { useEffect, useState } from "react";
-import { withAuth } from "@/lib/protectedRoute";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Gender = "MALE" | "FEMALE" | "OTHER";
 type Community = "GENERAL" | "OBC" | "BC" | "SC" | "ST";
+type FarmerDocs = {
+  profilePicUrl: string;
+  aadharDocUrl: string;
+  bankDocUrl: string;
+};
+type FarmerField = {
+  areaHa: number;
+  yieldEstimate: number;
+  landDocumentUrl: string;
+};
 
 interface Farmer {
   id: number;
+  surveyNumber: string;
   name: string;
   relationship: string;
   gender: Gender;
@@ -49,49 +68,82 @@ interface Farmer {
   dateOfBirth: string;
   age: number;
   contactNumber: string;
-  accountNumber: string;
+  createdBy: { name: string };
+  documents: FarmerDocs;
+  fields: FarmerField[];
 }
 
-const FormPage = () => {
-  const { isAuthenticated, setUser, setIsAuthenticated } = useAuthStore();
-  const { token } = useAuthStore.getState();
+type SearchType = "name" | "state" | "surveyNumber";
+
+export default function UserDashboard() {
+  const { user, isAuthenticated, hydrated, setUser, setIsAuthenticated } =
+    useAuthStore();
   const router = useRouter();
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState<SearchType>("name");
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, router]);
-
-  useEffect(() => {
-    const fetchFarmers = async () => {
-      if (isAuthenticated) {
-        try {
-          const response = await fetch("/api/farmers?all=true", {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          if (!response.ok) {
-            throw new Error("Failed to fetch farmers");
-          }
-          const data = await response.json();
-          setFarmers(data.farmers);
-          setIsLoading(false);
-        } catch (err) {
-          setError("Error fetching farmers data");
-          setIsLoading(false);
-          console.log(err);
-          console.log(error);
-        }
+    if (hydrated) {
+      if (!isAuthenticated) {
+        router.push("/signin");
       }
-    };
-    fetchFarmers();
-  }, [isAuthenticated, isLoading, token]);
+    }
+  }, [hydrated, isAuthenticated, router]);
+
+  const fetchFarmers = async () => {
+    if (hydrated) {
+      if (!isAuthenticated) {
+        return;
+      }
+    }
+    setIsLoading(true);
+    try {
+      let url = "/api/farmers";
+      if (searchTerm) {
+        url += `?${searchType}=${encodeURIComponent(searchTerm)}`;
+      }
+      const response = await fetch(url, {
+        method: "GET",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch farmers");
+      }
+      const data = await response.json();
+      setFarmers(data.farmers);
+    } catch (err) {
+      console.error("Error fetching farmers data", err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch farmers. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (hydrated && isAuthenticated) {
+      fetchFarmers();
+    }
+  }, [hydrated, isAuthenticated]);
+
+  const filteredFarmers = farmers.filter(farmer => {
+    const normalizedSearchTerm = searchTerm.toLowerCase().trim();
+
+    if (searchType === "name") {
+      return farmer.name.toLowerCase().includes(normalizedSearchTerm);
+    } else if (searchType === "state") {
+      return farmer.state.toLowerCase().includes(normalizedSearchTerm);
+    } else if (searchType === "surveyNumber") {
+      return farmer.surveyNumber.toLowerCase().includes(normalizedSearchTerm);
+    } else {
+      return true; // Return all farmers if no searchType matches
+    }
+  });
 
   const handleLogout = async () => {
     try {
@@ -104,9 +156,9 @@ const FormPage = () => {
     }
   };
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  const handleSearch = () => {
+    setIsLoading(true);
+  };
 
   return (
     <div className="flex h-screen w-full">
@@ -139,7 +191,15 @@ const FormPage = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">Export Document</Button>
+                <Button
+                  disabled={user?.role.toLowerCase() !== "admin"}
+                  className={
+                    user?.role.toLowerCase() !== "admin" ? "hidden" : ""
+                  }
+                  variant="outline"
+                >
+                  Export Document
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuLabel>Export as</DropdownMenuLabel>
@@ -156,12 +216,32 @@ const FormPage = () => {
             <CardTitle>Farmer Data</CardTitle>
           </CardHeader>
           <CardContent>
-            <DetailsTable data={farmers} />
+            <div className="flex gap-2 mb-4">
+              <Select
+                value={searchType}
+                onValueChange={(value: SearchType) => setSearchType(value)}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Search by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Farmer Name</SelectItem>
+                  <SelectItem value="state">State</SelectItem>
+                  <SelectItem value="surveyNumber">Survey Number</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+              <Button onClick={handleSearch}>Search</Button>
+            </div>
+            <DetailsTable isLoading={isLoading} data={filteredFarmers} />
           </CardContent>
         </Card>
       </main>
     </div>
   );
-};
-
-export default withAuth(FormPage);
+}

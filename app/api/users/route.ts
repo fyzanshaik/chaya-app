@@ -54,10 +54,11 @@ export async function GET(request: Request) {
 				email: true,
 				name: true,
 				role: true,
+				isActive: true,
 				createdAt: true,
 			},
 			orderBy: {
-				createdAt: 'desc',
+				createdAt: 'asc',
 			},
 		});
 		return NextResponse.json({ users });

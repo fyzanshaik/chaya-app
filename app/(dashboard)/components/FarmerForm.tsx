@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -17,7 +18,6 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useAuthStore } from "@/lib/utils/authStore";
 
 const FarmerFormSchema = z.object({
   farmerName: z.string().min(1, "Farmer name is required"),
@@ -36,16 +36,18 @@ const FarmerFormSchema = z.object({
   accountNumber: z.string().min(1, "Account number is required"),
   ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code"),
   branchName: z.string().min(1, "Branch name is required"),
-  address: z.string().min(1, "Address is required"),
+  bankAddress: z.string().min(1, "Address is required"),
   bankName: z.string().min(1, "Bank name is required"),
   bankCode: z.string().min(1, "Bank code is required"),
   fields: z.array(
     z.object({
       surveyNumber: z.string().min(1, "Survey number is required"),
-      areaHa: z.number().min(0, "Area must be positive"),
-      yieldEstimate: z.number().min(0, "Yield estimate must be positive"),
-      locationX: z.number(),
-      locationY: z.number(),
+      areaHa: z.number().min(1, "Area in Ha is required"),
+      yieldEstimate: z.number().min(1, "Yield Estimate is required"),
+      location: z.object({
+        lat: z.number().min(1, "Latitude is required"),
+        lng: z.number().min(1, "Longitude is required"),
+      }),
       landDocument: z.any(),
     })
   ),
@@ -73,7 +75,7 @@ export function FarmerForm() {
       accountNumber: "",
       ifscCode: "",
       branchName: "",
-      address: "",
+      bankAddress: "",
       bankName: "",
       bankCode: "",
       fields: [
@@ -81,8 +83,7 @@ export function FarmerForm() {
           surveyNumber: "",
           areaHa: 0,
           yieldEstimate: 0,
-          locationX: 0,
-          locationY: 0,
+          location: { lat: 0, lng: 0 },
           landDocument: null,
         },
       ],
@@ -94,12 +95,17 @@ export function FarmerForm() {
     name: "fields",
   });
 
-  const [files, setFiles] = useState({
+  const [files, setFiles] = useState<{
+    profilePic: File | null;
+    aadharDoc: File | null;
+    bankDoc: File | null;
+  }>({
     profilePic: null,
-    aadhar: null,
-    land: null,
-    bank: null,
+    aadharDoc: null,
+    bankDoc: null,
   });
+  const [landFiles, setLandFiles] = useState<(File | null)[]>([]);
+
   const [loadingIFSC, setLoadingIFSC] = useState(false);
   const [filteredDistricts, setFilteredDistricts] = useState<string[]>([]);
   const [districtInput, setDistrictInput] = useState("");
@@ -165,7 +171,7 @@ export function FarmerForm() {
       const data = await response.json();
 
       form.setValue("branchName", data.BRANCH || "");
-      form.setValue("address", data.ADDRESS || "");
+      form.setValue("bankAddress", data.ADDRESS || "");
       form.setValue("bankName", data.BANK || "");
       form.setValue("bankCode", data.BANKCODE || "");
     } catch (error) {
@@ -186,7 +192,11 @@ export function FarmerForm() {
     const { name, files: uploadedFiles } = e.target;
     if (uploadedFiles && uploadedFiles[0]) {
       if (fieldIndex !== undefined) {
-        form.setValue(`fields.${fieldIndex}.landDocument`, uploadedFiles[0]);
+        setLandFiles(prev => {
+          const newLandFiles = [...prev];
+          newLandFiles[fieldIndex] = uploadedFiles[0];
+          return newLandFiles;
+        });
       } else {
         setFiles(prev => ({ ...prev, [name]: uploadedFiles[0] }));
       }
@@ -213,12 +223,12 @@ export function FarmerForm() {
         formData.append(
           key,
           JSON.stringify(
-            (value as FarmerFormValues["fields"]).map(field => ({
+            (value as FarmerFormValues["fields"]).map((field, index) => ({
               surveyNumber: field.surveyNumber,
-              areaHa: field.areaHa,
-              yieldEstimate: field.yieldEstimate,
-              locationX: field.locationX,
-              locationY: field.locationY,
+              areaHa: String(field.areaHa),
+              yieldEstimate: String(field.yieldEstimate),
+              location: JSON.stringify(field.location),
+              landDocument: landFiles[index] ? landFiles[index]?.name : null,
             }))
           )
         );
@@ -227,42 +237,21 @@ export function FarmerForm() {
       }
     });
 
-    // Append bank details
-    formData.append(
-      "bankDetails",
-      JSON.stringify({
-        accountNumber: data.accountNumber,
-        ifscCode: data.ifscCode,
-        branchName: data.branchName,
-        address: data.address,
-        bankName: data.bankName,
-        bankCode: data.bankCode,
-      })
-    );
-
     // Append main document files
     if (files.profilePic) formData.append("profilePic", files.profilePic);
-    if (files.aadhar) formData.append("aadhar", files.aadhar);
-    if (files.bank) formData.append("bank", files.bank);
+    if (files.aadharDoc) formData.append("aadharDoc", files.aadharDoc);
+    if (files.bankDoc) formData.append("bankDoc", files.bankDoc);
 
     // Append land documents for each field
-    data.fields.forEach((field, index) => {
-      if (field.landDocument instanceof File) {
-        formData.append(
-          "landDocuments",
-          field.landDocument,
-          `field_${index}_${field.surveyNumber}`
-        );
+    landFiles.forEach((file, index) => {
+      if (file) {
+        formData.append(`fieldDoc_${index}`, file);
       }
     });
 
     try {
-      const { token } = useAuthStore.getState();
       const response = await fetch("/api/farmers", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formData,
       });
 
@@ -314,10 +303,10 @@ export function FarmerForm() {
                     <SelectValue placeholder="Select relationship" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SELF">Self</SelectItem>
-                    <SelectItem value="SPOUSE">Spouse</SelectItem>
-                    <SelectItem value="CHILD">Child</SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
+                    <SelectItem value="SELF">SELF</SelectItem>
+                    <SelectItem value="SPOUSE">SPOUSE</SelectItem>
+                    <SelectItem value="CHILD">CHILD</SelectItem>
+                    <SelectItem value="OTHER">OTHER</SelectItem>
                   </SelectContent>
                 </Select>
                 {form.formState.errors.relationship && (
@@ -336,9 +325,9 @@ export function FarmerForm() {
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Male">Male</SelectItem>
-                    <SelectItem value="Female">Female</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                    <SelectItem value="MALE">MALE</SelectItem>
+                    <SelectItem value="FEMALE">FEMALE</SelectItem>
+                    <SelectItem value="OTHER">OTHER</SelectItem>
                   </SelectContent>
                 </Select>
                 {form.formState.errors.gender && (
@@ -577,13 +566,13 @@ export function FarmerForm() {
               <div>
                 <Label htmlFor="address">Address</Label>
                 <Input
-                  {...form.register("address")}
+                  {...form.register("bankAddress")}
                   id="address"
                   placeholder="Address"
                 />
-                {form.formState.errors.address && (
+                {form.formState.errors.bankAddress && (
                   <p className="mt-1 text-sm text-red-600">
-                    {form.formState.errors.address.message}
+                    {form.formState.errors.bankAddress.message}
                   </p>
                 )}
               </div>
@@ -680,7 +669,7 @@ export function FarmerForm() {
                   <div>
                     <Label htmlFor={`locationX-${index}`}>Location X</Label>
                     <Input
-                      {...form.register(`fields.${index}.locationX`, {
+                      {...form.register(`fields.${index}.location.lat`, {
                         valueAsNumber: true,
                       })}
                       id={`locationX-${index}`}
@@ -688,16 +677,19 @@ export function FarmerForm() {
                       step="0.000001"
                       placeholder="Location X"
                     />
-                    {form.formState.errors.fields?.[index]?.locationX && (
+                    {form.formState.errors.fields?.[index]?.location?.lat && (
                       <p className="mt-1 text-sm text-red-600">
-                        {form.formState.errors.fields[index].locationX.message}
+                        {
+                          form.formState.errors.fields[index].location.lat
+                            ?.message
+                        }
                       </p>
                     )}
                   </div>
                   <div>
                     <Label htmlFor={`locationY-${index}`}>Location Y</Label>
                     <Input
-                      {...form.register(`fields.${index}.locationY`, {
+                      {...form.register(`fields.${index}.location.lng`, {
                         valueAsNumber: true,
                       })}
                       id={`locationY-${index}`}
@@ -705,9 +697,12 @@ export function FarmerForm() {
                       step="0.000001"
                       placeholder="Location Y"
                     />
-                    {form.formState.errors.fields?.[index]?.locationY && (
+                    {form.formState.errors.fields?.[index]?.location?.lng && (
                       <p className="mt-1 text-sm text-red-600">
-                        {form.formState.errors.fields[index].locationY.message}
+                        {
+                          form.formState.errors.fields[index].location.lng
+                            ?.message
+                        }
                       </p>
                     )}
                   </div>
@@ -721,13 +716,25 @@ export function FarmerForm() {
                       onChange={e => handleFileChange(e, index)}
                       accept="application/pdf"
                     />
+                    {landFiles[index] && (
+                      <p className="mt-1 text-sm text-green-600">
+                        File selected: {landFiles[index]?.name}
+                      </p>
+                    )}
                   </div>
                 </div>
                 {index > 0 && (
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => remove(index)}
+                    onClick={() => {
+                      remove(index);
+                      setLandFiles(prev => {
+                        const newLandFiles = [...prev];
+                        newLandFiles.splice(index, 1);
+                        return newLandFiles;
+                      });
+                    }}
                     className="mt-2"
                   >
                     Remove Field
@@ -737,16 +744,15 @@ export function FarmerForm() {
             ))}
             <Button
               type="button"
-              onClick={() =>
+              onClick={() => {
                 append({
                   surveyNumber: "",
                   areaHa: 0,
                   yieldEstimate: 0,
-                  locationX: 0,
-                  locationY: 0,
-                  landDocument: null,
-                })
-              }
+                  location: { lat: 0, lng: 0 },
+                });
+                setLandFiles(prev => [...prev, null]);
+              }}
               className="mt-2"
             >
               Add Field
@@ -764,26 +770,41 @@ export function FarmerForm() {
                     onChange={handleFileChange}
                     accept="image/*"
                   />
+                  {files.profilePic && (
+                    <p className="mt-1 text-sm text-green-600">
+                      File selected: {files.profilePic.name}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="aadhar">Aadhar Document</Label>
+                  <Label htmlFor="aadharDoc">Aadhar Document</Label>
                   <Input
                     type="file"
-                    id="aadhar"
-                    name="aadhar"
+                    id="aadharDoc"
+                    name="aadharDoc"
                     onChange={handleFileChange}
                     accept="application/pdf"
                   />
+                  {files.aadharDoc && (
+                    <p className="mt-1 text-sm text-green-600">
+                      File selected: {files.aadharDoc.name}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="bank">Bank Document</Label>
+                  <Label htmlFor="bankDoc">Bank Document</Label>
                   <Input
                     type="file"
-                    id="bank"
-                    name="bank"
+                    id="bankDoc"
+                    name="bankDoc"
                     onChange={handleFileChange}
                     accept="application/pdf"
                   />
+                  {files.bankDoc && (
+                    <p className="mt-1 text-sm text-green-600">
+                      File selected: {files.bankDoc.name}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

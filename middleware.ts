@@ -1,49 +1,69 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-const ADMIN_ROUTES = ['/api/users', '/api/farmers', '/api/documents', '/api/export/farmers'];
-const PROTECTED_ROUTES = ['/api/farmers', '/api/test'];
+const ADMIN_ROUTES = [
+  "/api/users",
+  "/api/documents",
+  "/api/export/farmers",
+  "/admindashboard",
+];
+const PROTECTED_ROUTES = ["/api/farmers", "/api/test", "/dashboard"];
 
 export async function middleware(request: NextRequest) {
-	try {
-		console.log('Middleware:', request.nextUrl.pathname);
-		const isAdminRoute = ADMIN_ROUTES.some((route) => request.nextUrl.pathname.startsWith(route));
-		const isProtectedRoute = PROTECTED_ROUTES.some((route) => request.nextUrl.pathname.startsWith(route));
+  try {
+    console.log("Middleware:", request.nextUrl.pathname);
+    const isAdminRoute = ADMIN_ROUTES.some(route =>
+      request.nextUrl.pathname.startsWith(route)
+    );
+    const isProtectedRoute = PROTECTED_ROUTES.some(route =>
+      request.nextUrl.pathname.startsWith(route)
+    );
 
-		if (!isAdminRoute && !isProtectedRoute) {
-			return NextResponse.next();
-		}
+    if (!isAdminRoute && !isProtectedRoute) {
+      return NextResponse.next();
+    }
 
-		const session = request.cookies.get('session');
+    const session = request.cookies.get("session");
 
-		if (!session) {
-			return NextResponse.json({ error: 'Unauthorized - No session found' }, { status: 401 });
-		}
+    if (!session) {
+      return NextResponse.redirect(new URL("/signin", request.url));
+    }
 
-		const sessionData = JSON.parse(session.value);
+    const sessionData = JSON.parse(session.value);
 
-		if (sessionData.exp < Date.now()) {
-			return NextResponse.json({ error: 'Session expired' }, { status: 401 });
-		}
+    if (sessionData.exp < Date.now()) {
+      return NextResponse.redirect(new URL("/signin", request.url));
+    }
 
-		// if (isAdminRoute && sessionData.role !== 'ADMIN') {
-		// 	return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
-		// }
+    if (isAdminRoute && sessionData.role !== "ADMIN") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
 
-		const requestHeaders = new Headers(request.headers);
-		requestHeaders.set('x-user-id', sessionData.userId.toString());
-		requestHeaders.set('x-user-role', sessionData.role);
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-user-id", sessionData.userId.toString());
+    requestHeaders.set("x-user-role", sessionData.role);
 
-		console.log('Ending middleware');
-		return NextResponse.next({
-			headers: requestHeaders,
-		});
-	} catch (error) {
-		console.error('Middleware error:', error);
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-	}
+    console.log("Ending middleware");
+    return NextResponse.next({
+      headers: requestHeaders,
+    });
+  } catch (error) {
+    console.error("Middleware error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
 
 export const config = {
-	matcher: ['/api/users/:path*', '/api/farmers/:path*', '/api/test', '/api/documents/:path*', '/api/export/farmers/:path*'],
+  matcher: [
+    "/api/users/:path*",
+    "/api/farmers/:path*",
+    "/api/test",
+    "/api/documents/:path*",
+    "/api/export/farmers/:path*",
+    "/dashboard",
+    "/admindashboard"
+  ],
 };

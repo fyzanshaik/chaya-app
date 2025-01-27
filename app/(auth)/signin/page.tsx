@@ -42,7 +42,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { setUser, setIsAuthenticated, setToken } = useAuthStore();
+  const { setUser, setIsAuthenticated } = useAuthStore();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -67,14 +67,15 @@ export default function LoginPage() {
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
-        setToken(data.token);
         setIsAuthenticated(true);
         toast({
           title: "Login Successful",
           duration: 5000,
           description: "Redirecting to dashboard...",
         });
-        router.push("/dashboard");
+        router.push(
+          data.user.role === "ADMIN" ? "/admindashboard" : "/dashboard"
+        );
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || "Login failed");
