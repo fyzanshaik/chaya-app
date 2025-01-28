@@ -31,7 +31,7 @@ const AppSidebar = () => {
         ]
       : []),
     {
-      title: "User Dashboard",
+      title: "Dashboard",
       url: "/dashboard",
       icon: Inbox,
     },

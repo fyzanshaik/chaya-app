@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, useAuthStore } from "@/lib/utils/authStore";
+import { type User, useAuthStore } from "@/lib/utils/authStore";
 import AppSidebar from "@/app/(dashboard)/components/AppSidebar";
 import {
   Sidebar,
@@ -21,6 +21,18 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Trash2 } from "lucide-react";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -66,28 +78,28 @@ export default function AdminDashboard() {
     }
   }, [hydrated, isAuthenticated]);
 
-  // const handleToggleStatus = async (user: User) => {
-  //   try {
-  //     const response = await fetch(`/api/users/${user.id}/toggle-status`, {
-  //       method: "PUT",
-  //     });
-  //     if (!response.ok) {
-  //       throw new Error("Failed to toggle user status");
-  //     }
-  //     toast({
-  //       title: "Success",
-  //       description: `User status toggled successfully.`,
-  //     });
-  //     fetchUsers();
-  //   } catch (error) {
-  //     console.error("Error toggling user status:", error);
-  //     toast({
-  //       title: "Error",
-  //       description: "Failed to toggle user status. Please try again.",
-  //       variant: "destructive",
-  //     });
-  //   }
-  // };
+  const handleDeleteUser = async (userId: number) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete user");
+      }
+      toast({
+        title: "Success",
+        description: "User deleted successfully.",
+      });
+      fetchUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete user. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -109,7 +121,7 @@ export default function AdminDashboard() {
           <TableHead>Email</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Active</TableHead>
-          {/* <TableHead>Actions</TableHead> */}
+          <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -129,6 +141,9 @@ export default function AdminDashboard() {
             </TableCell>
             <TableCell>
               <Skeleton className="h-4 w-8" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="h-4 w-16" />
             </TableCell>
           </TableRow>
         ))}
@@ -162,7 +177,7 @@ export default function AdminDashboard() {
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Active</TableHead>
-                {/* <TableHead>Actions</TableHead> */}
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -173,16 +188,38 @@ export default function AdminDashboard() {
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{user.role}</TableCell>
                   <TableCell>{user.isActive === true ? "Yes" : "No"}</TableCell>
-                  {/* <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleStatus(user)}
-                      className="mr-2"
-                    >
-                      Toggle Status
-                    </Button>
-                  </TableCell> */}
+                  <TableCell>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Are you absolutely sure?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently
+                            delete the user account and remove their data from
+                            our servers.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteUser(Number(user.id))}
+                            className="bg-red-600 dark:bg-red-500 dark:text-white"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

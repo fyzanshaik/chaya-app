@@ -27,6 +27,17 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Gender = "MALE" | "FEMALE" | "OTHER";
 type Community = "GENERAL" | "OBC" | "BC" | "SC" | "ST";
@@ -134,9 +145,11 @@ const TableSkeleton = () => (
 export default function DetailsTable({
   data,
   isLoading,
+  onDelete,
 }: {
   data: Farmer[];
   isLoading: boolean;
+  onDelete: (surveyNumber: string) => Promise<void>;
 }) {
   const initialColumns: Column[] = [
     { id: "id", label: "Id", isVisible: false },
@@ -367,16 +380,40 @@ export default function DetailsTable({
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={user?.role.toLowerCase() !== "admin"}
-                        className={
-                          user?.role.toLowerCase() !== "admin" ? "hidden" : ""
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={user?.role.toLowerCase() !== "admin"}
+                            className={
+                              user?.role.toLowerCase() !== "admin"
+                                ? "hidden"
+                                : ""
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will
+                              permanently delete the farmer&apos;s data.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => onDelete(farmer.surveyNumber)}
+                              className="bg-red-600 dark:bg-red-500 dark:text-white"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </TableCell>
                 </TableRow>

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 
 const FarmerFormSchema = z.object({
   farmerName: z.string().min(1, "Farmer name is required"),
@@ -55,7 +56,7 @@ const FarmerFormSchema = z.object({
 
 type FarmerFormValues = z.infer<typeof FarmerFormSchema>;
 
-export function FarmerForm() {
+export function FarmerForm({ onSuccess }: { onSuccess?: () => void }) {
   const form = useForm<FarmerFormValues>({
     resolver: zodResolver(FarmerFormSchema),
     defaultValues: {
@@ -90,6 +91,7 @@ export function FarmerForm() {
     },
   });
 
+  const { toast } = useToast();
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "fields",
@@ -256,14 +258,29 @@ export function FarmerForm() {
       });
 
       if (response.ok) {
-        alert("Farmer created successfully!");
+        toast({
+          title: "Success",
+          description: `Farmer Created successfully.`,
+        });
+        if (onSuccess) {
+          onSuccess();
+        }
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.message}`);
+        console.error(errorData.message);
+        toast({
+          title: "Error",
+          description: "Failed to create farmer. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error submitting form:", error);
-      alert("An error occurred while submitting the form.");
+      toast({
+        title: "Error",
+        description: "Failed to create farmer. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

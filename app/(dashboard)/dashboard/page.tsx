@@ -160,6 +160,29 @@ export default function UserDashboard() {
     setIsLoading(true);
   };
 
+  const deleteFarmer = async (surveyNumber: string) => {
+    try {
+      const response = await fetch(`/api/farmers/${surveyNumber}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete farmer");
+      }
+      toast({
+        title: "Success",
+        description: "Farmer deleted successfully",
+      });
+      await fetchFarmers(); // Refresh the data
+    } catch (error) {
+      console.error("Error deleting farmer:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete farmer. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar className="border-r border-border">
@@ -185,7 +208,7 @@ export default function UserDashboard() {
                 <DialogHeader>
                   <DialogTitle>Add Farmer Data</DialogTitle>
                 </DialogHeader>
-                <FarmerForm />
+                <FarmerForm onSuccess={fetchFarmers} />
               </DialogContent>
             </Dialog>
 
@@ -238,7 +261,11 @@ export default function UserDashboard() {
               />
               <Button onClick={handleSearch}>Search</Button>
             </div>
-            <DetailsTable isLoading={isLoading} data={filteredFarmers} />
+            <DetailsTable
+              isLoading={isLoading}
+              data={filteredFarmers}
+              onDelete={deleteFarmer}
+            />
           </CardContent>
         </Card>
       </main>
