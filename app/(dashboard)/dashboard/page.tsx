@@ -96,6 +96,7 @@ export default function UserDashboard() {
   const router = useRouter();
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchType, setSearchType] = useState<SearchType>("name");
   const { toast } = useToast();
@@ -198,6 +199,50 @@ export default function UserDashboard() {
     }
   };
 
+  const handleExport = async (format: string) => {
+    setIsExporting(true);
+    try {
+      const response = await fetch("http://localhost:3000/api/export/farmers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          options: {
+            format: format,
+            range: "ALL",
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to export farmers");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `farmer-data.${format.toLowerCase()}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast({
+        title: "Success",
+        description: "Farmers exported successfully.",
+      });
+    } catch (error) {
+      console.error("Error exporting farmers:", error);
+      toast({
+        title: "Error",
+        description: "Failed to export farmers. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="flex h-screen w-full">
       <Sidebar className="border-r border-border">
@@ -230,21 +275,27 @@ export default function UserDashboard() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  disabled={user?.role.toLowerCase() !== "admin"}
+                  disabled={user?.role.toLowerCase() !== "admin" || isExporting}
                   className={
                     user?.role.toLowerCase() !== "admin" ? "hidden" : ""
                   }
                   variant="outline"
                 >
-                  Export Document
+                  {isExporting ? "Exporting..." : "Export Document"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuLabel>Export as</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>CSV</DropdownMenuItem>
-                <DropdownMenuItem>Json</DropdownMenuItem>
-                <DropdownMenuItem>XLSX</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("CSV")}>
+                  CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("JSON")}>
+                  JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport("EXCEL")}>
+                  XLSX
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
