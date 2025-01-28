@@ -344,9 +344,20 @@ export async function GET(request: Request) {
             select: {
               areaHa: true,
               yieldEstimate: true,
+              location: true,
               landDocumentUrl: true,
             },
           },
+          bankDetails: {
+            select: {
+              accountNumber: true,
+              ifscCode: true,
+              branchName: true,
+              address: true,
+              bankName: true,
+              bankCode: true,
+            }
+          }
         },
         orderBy: {
           createdAt: "asc",

@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { FarmerFormEdit } from "./FarmerFormEdit";
 
 type Gender = "MALE" | "FEMALE" | "OTHER";
 type Community = "GENERAL" | "OBC" | "BC" | "SC" | "ST";
@@ -49,9 +50,20 @@ type FarmerDocs = {
 type FarmerField = {
   areaHa: number;
   yieldEstimate: number;
+  location: {
+    lat: number;
+    lng: number;
+  };
   landDocumentUrl: string;
 };
-
+type BankDetails = {
+  accountNumber: string;
+  ifscCode: string;
+  branchName: string;
+  address: string;
+  bankName: string;
+  bankCode: string;
+};
 interface Farmer {
   id: number;
   surveyNumber: string;
@@ -68,9 +80,13 @@ interface Farmer {
   dateOfBirth: string;
   age: number;
   contactNumber: string;
-  createdBy: { name: string };
+  createdAt: string;
+  createdBy: {
+    name: string;
+  };
   documents: FarmerDocs;
   fields: FarmerField[];
+  bankDetails: BankDetails;
 }
 
 interface Column {
@@ -146,10 +162,12 @@ export default function DetailsTable({
   data,
   isLoading,
   onDelete,
+  onEdit
 }: {
   data: Farmer[];
   isLoading: boolean;
   onDelete: (surveyNumber: string) => Promise<void>;
+  onEdit: () => Promise<void>;
 }) {
   const initialColumns: Column[] = [
     { id: "id", label: "Id", isVisible: false },
@@ -174,6 +192,10 @@ export default function DetailsTable({
 
   const [columns, setColumns] = useState<Column[]>(initialColumns);
   const { user } = useAuthStore();
+  const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(null);
+  const handleEditFarmer = (farmer: Farmer) => {
+    setSelectedFarmer(farmer);
+  };
 
   const toggleColumn = (columnId: keyof Farmer) => {
     setColumns(prevColumns =>
@@ -360,6 +382,8 @@ export default function DetailsTable({
                           {farmer.createdBy.name}
                         </TableCell>
                       );
+                    } else if (column.id === "bankDetails") {
+                      return "";
                     } else {
                       return (
                         <TableCell key={column.id}>
@@ -370,16 +394,28 @@ export default function DetailsTable({
                   })}
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={user?.role.toLowerCase() !== "admin"}
-                        className={
-                          user?.role.toLowerCase() !== "admin" ? "hidden" : ""
-                        }
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditFarmer(farmer)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-xl">
+                          <DialogHeader>
+                            <DialogTitle>Edit Farmer Data</DialogTitle>
+                          </DialogHeader>
+                          {selectedFarmer && (
+                            <FarmerFormEdit
+                              farmerData={selectedFarmer}
+                              onSuccess={onEdit}
+                            />
+                          )}
+                        </DialogContent>
+                      </Dialog>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button

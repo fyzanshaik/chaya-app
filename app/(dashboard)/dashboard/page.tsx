@@ -49,9 +49,20 @@ type FarmerDocs = {
 type FarmerField = {
   areaHa: number;
   yieldEstimate: number;
+  location: {
+    lat: number;
+    lng: number;
+  };
   landDocumentUrl: string;
 };
-
+type BankDetails = {
+  accountNumber: string;
+  ifscCode: string;
+  branchName: string;
+  address: string;
+  bankName: string;
+  bankCode: string;
+};
 interface Farmer {
   id: number;
   surveyNumber: string;
@@ -68,9 +79,13 @@ interface Farmer {
   dateOfBirth: string;
   age: number;
   contactNumber: string;
-  createdBy: { name: string };
+  createdAt: string;
+  createdBy: {
+    name: string;
+  };
   documents: FarmerDocs;
   fields: FarmerField[];
+  bankDetails: BankDetails;
 }
 
 type SearchType = "name" | "state" | "surveyNumber";
@@ -265,6 +280,7 @@ export default function UserDashboard() {
               isLoading={isLoading}
               data={filteredFarmers}
               onDelete={deleteFarmer}
+              onEdit={fetchFarmers}
             />
           </CardContent>
         </Card>
