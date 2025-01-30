@@ -399,6 +399,12 @@ export default function DetailsTable({
                           <Button
                             variant="ghost"
                             size="icon"
+                            disabled={user?.role.toLowerCase() !== "admin"}
+                            className={
+                              user?.role.toLowerCase() !== "admin"
+                                ? "hidden"
+                                : ""
+                            }
                             onClick={() => handleEditFarmer(farmer)}
                           >
                             <Edit2 className="h-4 w-4" />
