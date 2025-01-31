@@ -109,7 +109,6 @@ const TableSkeleton = () => (
         <TableHead>Panchayath</TableHead>
         <TableHead>Date of Birth</TableHead>
         <TableHead>Age</TableHead>
-        <TableHead>Documents</TableHead>
         <TableHead>Fields</TableHead>
       </TableRow>
     </TableHeader>
@@ -162,7 +161,7 @@ export default function DetailsTable({
   data,
   isLoading,
   onDelete,
-  onEdit
+  onEdit,
 }: {
   data: Farmer[];
   isLoading: boolean;
@@ -186,7 +185,6 @@ export default function DetailsTable({
     { id: "panchayath", label: "Panchayath", isVisible: true },
     { id: "dateOfBirth", label: "Date of Birth", isVisible: true },
     { id: "age", label: "Age", isVisible: true },
-    { id: "documents", label: "Documents", isVisible: true },
     { id: "fields", label: "Fields", isVisible: true },
   ];
 
@@ -288,57 +286,59 @@ export default function DetailsTable({
                 <TableRow key={farmer.id}>
                   {visibleColumns.map(column => {
                     if (column.id === "documents") {
-                      return (
-                        <TableCell
-                          key={column.id}
-                          className="flex items-center justify-center"
-                        >
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <FileText className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Fetch Documents</DialogTitle>
-                              </DialogHeader>
-                              <div className="py-7 flex justify-around">
-                                <Button
-                                  onClick={() =>
-                                    fetchDocumentUrl(
-                                      "profile-pic",
-                                      farmer.surveyNumber
-                                    )
-                                  }
-                                >
-                                  Get Profile Pic
+                      if (user?.role.toLowerCase() === "admin") {
+                        return (
+                          <TableCell
+                            key={column.id}
+                            className="flex items-center justify-center"
+                          >
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <FileText className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  onClick={() =>
-                                    fetchDocumentUrl(
-                                      "aadhar",
-                                      farmer.surveyNumber
-                                    )
-                                  }
-                                >
-                                  Get Aadhar Doc
-                                </Button>
-                                <Button
-                                  onClick={() =>
-                                    fetchDocumentUrl(
-                                      "bank",
-                                      farmer.surveyNumber
-                                    )
-                                  }
-                                >
-                                  Get Bank Doc
-                                </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </TableCell>
-                      );
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Fetch Documents</DialogTitle>
+                                </DialogHeader>
+                                <div className="py-7 flex justify-around">
+                                  <Button
+                                    onClick={() =>
+                                      fetchDocumentUrl(
+                                        "profile-pic",
+                                        farmer.surveyNumber
+                                      )
+                                    }
+                                  >
+                                    Get Profile Pic
+                                  </Button>
+                                  <Button
+                                    onClick={() =>
+                                      fetchDocumentUrl(
+                                        "aadhar",
+                                        farmer.surveyNumber
+                                      )
+                                    }
+                                  >
+                                    Get Aadhar Doc
+                                  </Button>
+                                  <Button
+                                    onClick={() =>
+                                      fetchDocumentUrl(
+                                        "bank",
+                                        farmer.surveyNumber
+                                      )
+                                    }
+                                  >
+                                    Get Bank Doc
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </TableCell>
+                        );
+                      }
                     } else if (column.id === "fields") {
                       return (
                         <TableCell key={column.id}>
@@ -367,6 +367,14 @@ export default function DetailsTable({
                                       "land",
                                       farmer.surveyNumber
                                     )
+                                  }
+                                  disabled={
+                                    user?.role.toLowerCase() !== "admin"
+                                  }
+                                  className={
+                                    user?.role.toLowerCase() !== "admin"
+                                      ? "hidden"
+                                      : ""
                                   }
                                 >
                                   Get Land Doc
