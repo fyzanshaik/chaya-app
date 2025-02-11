@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -96,7 +96,7 @@ export default function AdminDashboard() {
 		}
 	}, [hydrated, isAuthenticated, router]);
 
-	const fetchUsers = async () => {
+	const fetchUsers = useCallback(async () => {
 		if (!isAuthenticated) return;
 		setIsLoading(true);
 		try {
@@ -118,13 +118,12 @@ export default function AdminDashboard() {
 		} finally {
 			setIsLoading(false);
 		}
-	};
-
+	}, [isAuthenticated, toast]);
 	useEffect(() => {
 		if (hydrated && isAuthenticated) {
 			fetchUsers();
 		}
-	}, [hydrated, isAuthenticated]);
+	}, [hydrated, isAuthenticated, fetchUsers]);
 
 	const validateCreateUser = () => {
 		try {

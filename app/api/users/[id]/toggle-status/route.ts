@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/utils/prisma';
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
 	try {
 		const userRole = request.headers.get('x-user-role');
 
@@ -9,7 +9,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
 			return NextResponse.json({ error: 'Only admins can modify user status' }, { status: 403 });
 		}
 
-		const userId = parseInt(params.id);
+		const { id } = await params;
+
+		const userId = parseInt(id);
 
 		const user = await prisma.user.findUnique({
 			where: { id: userId },

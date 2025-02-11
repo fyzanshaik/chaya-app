@@ -2,15 +2,15 @@ import { NextResponse } from 'next/server';
 import prisma from '@/utils/prisma';
 import { supabase } from '@/utils/supabase';
 
-export async function GET(request: Request, { params }: { params: { type: string; id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ type: string; id: string }> }) {
 	try {
 		console.log('Starting GET request for document URL generation');
-
-		const { type: docType, id: docId } = params;
+		const { type: docType, id: docId } = await params;
 		console.log('Received params:', { docType, docId });
 
 		const userId = request.headers.get('x-user-id');
 		console.log('Validating user with userId:', userId);
+
 		if (!userId) {
 			console.error('Unauthorized: userId is missing');
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,6 +20,7 @@ export async function GET(request: Request, { params }: { params: { type: string
 			where: { id: parseInt(userId) },
 			select: { isActive: true },
 		});
+
 		console.log('User found:', user);
 
 		if (!user?.isActive) {
@@ -36,6 +37,7 @@ export async function GET(request: Request, { params }: { params: { type: string
 
 		const folder = folderMap[docType as keyof typeof folderMap];
 		console.log('Folder mapped for docType:', folder);
+
 		if (!folder) {
 			console.error('Invalid document type:', docType);
 			return NextResponse.json({ error: 'Invalid document type' }, { status: 400 });
@@ -51,6 +53,7 @@ export async function GET(request: Request, { params }: { params: { type: string
 				fields: true,
 			},
 		});
+
 		console.log('Farmer found:', farmer);
 
 		if (!farmer) {
@@ -79,6 +82,7 @@ export async function GET(request: Request, { params }: { params: { type: string
 				console.error('Invalid document type:', docType);
 				return NextResponse.json({ error: 'Invalid document type' }, { status: 400 });
 		}
+
 		console.log('File name resolved:', fileName);
 
 		if (!fileName) {
@@ -90,7 +94,7 @@ export async function GET(request: Request, { params }: { params: { type: string
 		console.log('File path generated:', filePath);
 
 		console.log('Generating signed URL for file:', filePath);
-		const { data: signedUrlData, error: signedUrlError } = await supabase.storage.from('farmer-data').createSignedUrl(filePath, 1800); // 30 minutes
+		const { data: signedUrlData, error: signedUrlError } = await supabase.storage.from('farmer-data').createSignedUrl(filePath, 1800);
 
 		if (signedUrlError) {
 			console.error('Supabase error:', signedUrlError);
@@ -105,13 +109,7 @@ export async function GET(request: Request, { params }: { params: { type: string
 		console.log('Signed URL generated successfully:', signedUrlData.signedUrl);
 		return NextResponse.json({ url: signedUrlData.signedUrl });
 	} catch (error) {
-		const err = error as Error;
-		console.error('Document URL generation error:', {
-			name: err.name,
-			message: err.message,
-			stack: err.stack,
-		});
-
+		console.error('Document URL generation error:', error);
 		return NextResponse.json({ error: 'Failed to generate document URL' }, { status: 500 });
 	}
 }

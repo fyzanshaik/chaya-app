@@ -61,7 +61,7 @@ export default function CreateUserForm({ isOpen, onClose, onSuccess }: CreateUse
 			<DialogContent className="sm:max-w-[425px]">
 				<DialogHeader>
 					<DialogTitle>Create New User</DialogTitle>
-					<DialogDescription>Enter the details for the new user. Click save when you're done.</DialogDescription>
+					<DialogDescription>Enter the details for the new user. Click save when youre done.</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div className="space-y-2">

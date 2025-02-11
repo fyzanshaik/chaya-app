@@ -17,13 +17,15 @@ interface FarmerWithSignedUrls extends Farmer {
 	documents: SignedDocuments;
 	fields: SignedField[];
 }
-export async function GET(request: Request, { params }: { params: { identifier: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ identifier: string }> }) {
 	try {
-		console.log('Fetching single farmer. Identifier:', params.identifier);
+		const { identifier } = await params;
+
+		console.log('Fetching single farmer. Identifier:', identifier);
 
 		const farmer = await prisma.farmer.findFirst({
 			where: {
-				OR: [{ surveyNumber: params.identifier }, { id: parseInt(params.identifier) || 0 }],
+				OR: [{ surveyNumber: identifier }, { id: parseInt(identifier) || 0 }],
 			},
 			include: {
 				documents: true,
@@ -75,11 +77,11 @@ export async function GET(request: Request, { params }: { params: { identifier: 
 	}
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
 	try {
 		const userRole = request.headers.get('x-user-role');
 		const userId = request.headers.get('x-user-id');
-		const { id } = params;
+		const { id } = await params;
 
 		if (!id) {
 			return NextResponse.json({ error: 'Invalid identifier provided' }, { status: 400 });
@@ -268,10 +270,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 	}
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
 	try {
 		const userRole = request.headers.get('x-user-role');
-		const { id } = params;
+		const { id } = await params;
 
 		if (!id) {
 			return NextResponse.json({ error: 'Invalid identifier provided' }, { status: 400 });
