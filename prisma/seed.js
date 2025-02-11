@@ -11,27 +11,9 @@ async function main() {
 
 	const adminUsers = [
 		{
-			email: 'admin1@test.com',
-			password: hashPassword('admin123'),
-			name: 'John Admin',
-			role: Role.ADMIN,
-		},
-		{
-			email: 'admin2@test.com',
-			password: hashPassword('admin456'),
-			name: 'Sarah Admin',
-			role: Role.ADMIN,
-		},
-		{
-			email: 'admin3@test.com',
-			password: hashPassword('admin789'),
-			name: 'Mike Admin',
-			role: Role.ADMIN,
-		},
-		{
-			email: 'aniketh@admin.com',
-			password: hashPassword('aniketh123'),
-			name: 'Mike Admin',
+			email: 'chaya@admin.com',
+			password: hashPassword('chaya123'),
+			name: 'Chaya Admin',
 			role: Role.ADMIN,
 		},
 	];

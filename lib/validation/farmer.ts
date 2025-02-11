@@ -9,11 +9,24 @@ const BankDetailsSchema = z.object({
 	bankName: z.string(),
 	bankCode: z.string(),
 });
-const FieldSchema = z.object({
-	areaHa: z.string().transform((val) => parseFloat(val)),
-	yieldEstimate: z.string().transform((val) => parseFloat(val)),
-	location: z.string(),
+
+
+
+export const LocationSchema = z.object({
+	lat: z.number().min(-90, 'Latitude must be between -90 and 90').max(90, 'Latitude must be between -90 and 90'),
+	lng: z.number().min(-180, 'Longitude must be between -180 and 180').max(180, 'Longitude must be between -180 and 180'),
+	accuracy: z.number().min(0, 'Accuracy must be positive'),
+	altitude: z.number().nullable(),
+	altitudeAccuracy: z.number().nullable(),
+	timestamp: z.number(),
 });
+export const FieldSchema = z.object({
+	areaHa: z.number().min(0),
+	yieldEstimate: z.number().min(0),
+	location: LocationSchema,
+	landDocument: z.any()
+  });
+
 export const CreateFarmerSchema = z.object({
 	farmerName: z.string().min(1, 'Farmer name is required'),
 	relationship: z.nativeEnum(Relationship),

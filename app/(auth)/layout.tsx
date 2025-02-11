@@ -1,16 +1,18 @@
+// app/(auth)/signin/layout.tsx
 import '@/app/globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Geist } from 'next/font/google';
+import { cn } from '@/lib/utils';
 
-const inter = Inter({ subsets: ['latin'] });
+const geist = Geist({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-	title: 'Farmer Data Collection',
-	description: 'Efficiently manage and track farmer information',
+	title: 'Sign In - Farmer Data Collection',
+	description: 'Access your account to manage and track farmer information',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
 	return (
-    <div className={`${inter.className} w-full`}>{children}</div>
-  );
+		<div className={cn(geist.className, 'min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-gray-900 dark:to-gray-950', 'transition-colors duration-300 ease-in-out')}>{children}</div>
+	);
 }
